@@ -1,0 +1,274 @@
+/* ************************* */
+
+CHAPTER 14 INSTALLING AND MAINTAINING DATA QUALITY SERVICES
+
+/* ************************* */
+
+DQS
+	data profiling = data quality
+	
+MDM = Master Data Management
+
+hard dimension = Mesurable dimension
+	=> T-sql measurement
+soft dimension = dimension that depends on the perspective of the user
+	=> measurement through interview of the users
+
+Hard Dimensions 
+	Completeness dimension = in relation with NULL values
+	Accuracy dimension = depends on the context (unique? Duplicates? business rules? data integrity)
+	Information dimension = entropy measurement
+	Consistency dimension = equivalence of information in various databases
+
+Soft dimensions
+	Timeliness dimension = degree to which data is current and available. Data needs to be updated regularly
+	Ease of use dimension = is the data complex to use
+	Intention dimensin = is the data used fo its intended use or is it derived
+	Trust dimension = can we trust the data
+	Presentation quality dimension = is the data well presented to the users
+	
+Schema Dimensions
+	Schema completeness = does it cover the business problem ?
+	Schema correctness = is the model represents correctly the real world?
+	Documentation = is the schema properly documented
+	Compliance with theoretical models = is the database schema for transactional applications in a properly normalized and specialized relational schema, and does the schema for a data warehouse consist of star schemas? 
+	Minimalizatin = do we have in the model only the objects that are required for the business problem
+
+Knowledge base
+	manage all knowledge of a specific portion of data
+	in DQS projects, we perform :
+					cleansing
+					profiling
+					matching
+	Can be prepared localy or used the reference data from the cloud (Windows Azure MarketPlace DataMarket)
+	
+	
+DQS_MAIN database
+	
+	DQS proc (for the DQS engine)
+	published knowledge base which has been prepared to be used in cleansing projects
+	
+DQS_PROJECTS database
+	
+	data for knowledge base management
+	data needed for the cleansing and matching projects
+
+DQS_STAGING_DATA database
+
+	intermediate storage area to copy source data for cleansing and where to export cleansing results
+	
+
+TASKS CLIENTS
+	CLEANSING = SSIS DQS Cleansing transformation
+	MATCHING = MDS Excel add-in
+
+INSTALLATION REQUIREMENTS 
+	SQL SERVER ENGINE
+	SSMS
+	.NET FRAMEWORK 4 (automatically installe with DQS)
+	INTERNET EXPLORER 6SP1 or later
+	EXCEL 2003 OR GREATER IF NEEDED
+
+INSTALLATION
+	run the sql server install and the box for DQS engine and client
+	find the DQS installer and run it (enter the database master key password)
+	
+	when finished =
+		the tree databases are created
+		two logins needed by DQS are created =
+			##MS_dqs_db_owner_login## (db_owner of the three databases)
+			##MS_dqs_service_login## (public in the three databases)
+		three roles are created in DQS_MAIN =
+			dqs_administrator
+			dqs_kb_editor
+			dqs_kb_operator
+		one sproc is created in the master database
+			DQInitDQS_MAIN
+		creates installation log file
+			DQS_install.log in C:\Program Files\Microsoft SQL Server\MSSQL11.<instance_name>\MSSQL\Log
+		if MDS integration it creates a user is created and mapped to the MDS login. the user is then added to the dqs_administrator role in DQS_MAIN
+
+DQS CLIENT
+	REFERENCE DATA
+	
+	ADMINISTRATION > General tab
+		min score for suggestion
+		min score for auto correction
+		min record score
+		enable notifications
+	
+	LOG SETTINGS
+		Data Quality Server log file is DQServerLog.DQS_MAIN.log (rolling file) present in the sql instance default folder
+		Data Quality Client log file is DQLog.Client.xml in %APPDATA%\SSDQS\Log
+		
+		can be configured (5)
+			Domain management
+			Knowledge discovery
+			Cleansing Project (except reference data services)
+			Matching Policy and matching projects
+			Reference Data Services (RDS)
+		logging levels (5)
+			FATAL (critical runtime error)
+			ERROR (other runtime error)
+			WARN (warning)
+			INFO (information)
+			DEBUG verbose information
+
+DQS SECURITY
+
+	dqs_administrator
+		admin in DQS scope :
+			create KB
+			edit KB
+			create DQS projects
+			execute DQS projects
+			terminate a running project or other activity
+			stop process
+			change Reference Data Services and other settings
+	dqs_kb_editor
+		create KB
+		edit KB
+		edit projects
+		execute projects
+		monitor all DQS activity
+		CAN NOT STOP ACTIVITY
+		CAN NOT PERFORM OTHER TASKS
+	dqs_kb_operator
+		edit projects
+		execute projects
+		monitor all DQS activity
+		CAN NOT CREATE KB
+		CAN NOT CHANGE KB
+		CAN NOT STOP ACTIVITY
+		CAN NOT PERFORM OTHER TASKS
+		
+BACKUP RESTORE
+
+	DQS_MAIN and DQS_PROJECTS backups must be synchronized
+	FULL backups are usually the only type used 
+		in this case change the recovery model to SIMPLE
+	
+/* ************************* */
+
+CHAPTER 15 IMPLEMENTING MASTER DATA SERVICES
+
+/* ************************* */
+
+WHAT IS CONSIDERED MASTER DATA
+	Cardinality, complexity, volatility, auditing, versioning and reusage determine the definition of the master data for a company
+	Data that doesn't need special treatement is not master data
+	
+WHAT IS MASTER DATA MANAGEMENT
+	MDM is a set of coordinated processes, policies, tools and technologies used to create and maintain accurate master data
+
+MDM APPROACHES
+	
+	no central MDM
+		the data analysis is done when needed performing ad-hoc merging and cleansing
+	central metadata storage
+		there is one point of reference for the master data and ad-hoc merging and cleansing are performed
+		there is one point of reference that stores keys that map to the tables.
+	central metadata storeage and central data that is continuously merged
+		metadata and master data are storedin a dedicated MDM system. Merges make it expensive
+	central MDM, single copy
+		it uses a specialized MDM application where master data and metadata is maintained in a central location. It requires that all the applications are upgraded in order to use the master data in the MDM application.
+	central MDM, multiple copies
+		it uses a specialized MDM application that contains only an intersection of the common metadata from source system (replication is usually involved). requires less merges hence it is less expensive
+
+MDM CHALLENGES
+
+	Different definitions of master metadata in source systems
+	Data quality issue (which is actully the goal of creating the MDM)
+	Authority
+	Data conflicts
+
+IMPORT KNOWLEDGE FROP THE CLEASING PROJECT BACK INTO THE KNOWLEDGE BASE
+
+	use the Data Quality Client to import the cleansing project values into a domain
+	must be a member of the dqs_kb_editor rome on the DQS_MAIN database to import cleansing project values into a domain
+	Only string value are improted to the domain
+	Only corrections perforlmed on the value level will be imprted into the knowledge base
+
+MDS ROLES
+
+	mds_ssb_user = used to execute Service Broker
+	mds_email_login = Enabled login used for notifications
+	mds_email_user = used for notifications
+	mds_schema_user = Owns the mdm and mdq schemas
+	mds_exec = Role contains the account you designate in Master Data Services Configuration Manager
+	mds_dlp_login = Allows creatin of UNSAFE assemblies
+
+MDS LOGINS
+
+	mds_dlp_login = map to dbo for the MDS database
+					mds_clr_user in MSDB is mapped to this login
+					This login allows for the creation of UNSAFE assemblies
+	mds_email_login = login used for notifications. The use mds_email_user in MSDB database and MDS database maps to this login
+	
+MDS USER IN MSDB
+
+	mds_clr_user = maps to mds_dlp_login
+	mds_email_user = maps to mds_email_login and is member of DatabaseMailUserRole role
+	
+MDS USER IN MDS db
+
+	mds_email_user = used for notifications. 
+					SELECT permission for the mdm schema	
+					EXECUTE permission for the mdm.MemberGetCriteria user defined table type
+					EXECUTE permission for the mdm.udpNotificationQueueActivate
+	mds_schema_user = no login mapped. User owns mdm and mdq schemas
+	mds_ssb_user = used to execute Service Broker tasks
+					DELETE, INSERT,REFERENCES,SELECT and UPDATE permission all schemas and no login mapped.
+	mds_exec (role) = contains the account you designate in Master Data Services Configuration Manager when creating a Master Data Manager Web application and designate an accout for the application pool
+
+MDS ATTRIBUTES
+
+	recursive = recursive hierarchy is a derived hierarchy that includes a recursive relationship which exists when an entity has a domain-based attribute based on the entity itself.
+	explicit = explicit hierarchy organizes members from a single entity in any way you want. Can be ragged
+			mandatory = Is defined by the user
+			non-mandatory = members are in system created unused-node
+	link = link
+	file = file
+	domain-based = list
+	numeric = numeric
+	derived = A derived hierarchy has its structure derived from the relationships between domain-based attributes
+
+WEB APPLICATION
+
+	the web application is ued to perform administrative tasks (like creating a model, entity or business rule) and that users access to update data
+
+MDSModelDeploy.exe
+	
+	tool used to create packages of the model objects and data
+	
+MASTER DATA SERVICES ADD-IN EXCEL
+
+	tool used to manage data and create new entities and attributes
+
+IMPORT DATA INTO MDS
+
+	load data into the staging tables
+	run either
+		stg.udp_name_Leaf = creates modifies and deletes leat members and their attributes
+		stg.udp_name_Consolidated = creates, modifies and deletes consolidated members and their attributes
+		stg.udp_name_Relationship = moves members in an explicit hierarchy
+		
+MASTER DATA SERVICES DATABASE
+
+	a database is created under the name chosen
+	the group MDS_ServiceAccounts is created and given acces to the MDSTempDir folder under the Master Data Services installation path
+	
+
+
+/* ************************* */
+
+LOAD DATA
+
+/* ************************* */
+
+
+
+
+
+
+
